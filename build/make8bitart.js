@@ -200,12 +200,12 @@
   var generateCanvas = function() {
 
     // drawing
-    DOM.$canvas = $('<canvas id="canvas" width="' + windowCanvas.width + '" height="' + windowCanvas.height + '">Your browser doesn\'t support canvas. Boo-hiss.</canvas>');
+    DOM.$canvas = $('<canvas id="canvas" touch-action="none" width="' + windowCanvas.width + '" height="' + windowCanvas.height + '">Your browser doesn\'t support canvas. Boo-hiss.</canvas>');
     DOM.$body.prepend( DOM.$canvas );
     ctx = DOM.$canvas[0].getContext('2d');
 
     // selection save overlay
-    DOM.$overlay = $('<canvas id="overlay" width="' + windowCanvas.width + '" height="' + windowCanvas.height + '"></canvas>');
+    DOM.$overlay = $('<canvas id="overlay" touch-action="none" width="' + windowCanvas.width + '" height="' + windowCanvas.height + '"></canvas>');
     DOM.$overlay.css({
       background : 'none',
       position : 'absolute',
@@ -285,13 +285,6 @@
     if ( !areColorsEqual( hoverRGB, pixel.color, pixel.size) ) {
       drawPixel(e.pageX, e.pageY, pixel.color, pixel.size);
       pushToHistory(action.index, action.draw, e.pageX, e.pageY, hoverRGB, pixel.color, pixel.size, drawPathId);
-    }
-  };
-
-  var touchDraw = function(e) {
-    // for each finger in your fingers
-    for ( var i = 0; i < e.touches.length; i++ ) {
-      drawOnMove(e.touches[i]);
     }
   };
 
@@ -623,12 +616,14 @@
   };
 
   var drawSelection = function(e) {
-    rect.w = roundToNearestPixel((e.pageX - this.offsetLeft) - rect.startX);
-    rect.h = roundToNearestPixel((e.pageY - this.offsetTop) - rect.startY);
-    ctxOverlay.clearRect(0,0,DOM.$overlay.width(),DOM.$overlay.height());
-    ctxOverlay.fillStyle = 'rgba(0,0,0,.5)';
-    ctxOverlay.fillRect(0,0,DOM.$overlay.width(),DOM.$overlay.height());
-    ctxOverlay.clearRect(rect.startX, rect.startY, rect.w, rect.h);
+    if ( e.originalEvent.isPrimary !== false ) {
+      rect.w = roundToNearestPixel((e.pageX - this.offsetLeft) - rect.startX);
+      rect.h = roundToNearestPixel((e.pageY - this.offsetTop) - rect.startY);
+      ctxOverlay.clearRect(0,0,DOM.$overlay.width(),DOM.$overlay.height());
+      ctxOverlay.fillStyle = 'rgba(0,0,0,.5)';
+      ctxOverlay.fillRect(0,0,DOM.$overlay.width(),DOM.$overlay.height());
+      ctxOverlay.clearRect(rect.startX, rect.startY, rect.w, rect.h);
+    }
   };
 
   var displayFinishedArt = function(src) {
@@ -900,10 +895,10 @@
 
   /* general */
 
-  var onMouseDown = function(e) {
+  var onPointerDown = function(e) {
     e.preventDefault();
 
-    if ( e.which === 3 ) {
+    if ( e.button === 2 ) {
       return;
     }
 
@@ -939,35 +934,27 @@
           pushToHistory(action.index, action.draw, e.pageX, e.pageY, origRGB, pixel.color, pixel.size, drawPathId);
         }
 
-        DOM.$canvas.on('mousemove', drawOnMove);
-
-        // touch
-        DOM.$canvas[0].addEventListener('touchmove', touchDraw, false);
+        DOM.$canvas.on('pointermove', drawOnMove);
 
         // update color history palette - shows latest 20 colors used
         if ( pixel.color !== 'rgba(0, 0, 0, 0)' ) {
           updateColorHistoryPalette();
         }
       }
-
     }
-    else {
+    else if ( e.originalEvent.isPrimary !== false ) {
       // overlay stuff
       rect = {};
       startSaveSelection(e);
       rect.startX = roundToNearestPixel(e.pageX - this.offsetLeft);
       rect.startY = roundToNearestPixel(e.pageY - this.offsetTop);
-      DOM.$overlay.on('mousemove', drawSelection);
-
-      // touch
-      DOM.$overlay[0].addEventListener('touchmove', drawSelection, false);
+      DOM.$overlay.on('pointermove', drawSelection);
     }
-
   };
 
-  var onMouseUp = function(e) {
+  var onPointerUp = function(e) {
     if ( !mode.save ) {
-      DOM.$canvas.off('mousemove');
+      DOM.$canvas.off('pointermove');
       mode.drawing = false;
 
       drawPathId = null;
@@ -975,8 +962,8 @@
       // save
       saveToLocalStorage();
     }
-    else {
-      DOM.$overlay.off('mousemove');
+    else if ( e.originalEvent.isPrimary !== false ) {
+      DOM.$overlay.off('pointermove');
       ctxOverlay.clearRect(0,0,DOM.$overlay.width(),DOM.$overlay.height());
       generateSaveSelection(e);
       mode.save = false;
@@ -1403,14 +1390,8 @@
 
   historyPointer = -1;
 
-  DOM.$canvas.mousedown(onMouseDown).mouseup(onMouseUp);
-  DOM.$overlay.mousedown(onMouseDown).mouseup(onMouseUp);
+  DOM.$canvas.on('pointerdown', onPointerDown).on('pointerup', onPointerUp);
+  DOM.$overlay.on('pointerdown', onPointerDown).on('pointerup', onPointerUp);
   DOM.$canvas.on('contextmenu', onRightClick);
-
-  //touch
-  DOM.$canvas[0].addEventListener('touchstart', onMouseDown, false);
-  DOM.$canvas[0].addEventListener('touchend', onMouseUp, false);
-  DOM.$overlay[0].addEventListener('touchstart', onMouseDown, false);
-  DOM.$overlay[0].addEventListener('touchend', onMouseUp, false);
 
 }(window.jQuery, window, document));
