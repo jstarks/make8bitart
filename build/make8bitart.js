@@ -278,14 +278,16 @@
     };
   };
 
-  var drawOnMove = function(e) {
-    var hoverData = ctx.getImageData( e.pageX, e.pageY, 1, 1).data;
-    var hoverRGB = getRGBColor(hoverData);
+  var drawOnMove = function(color) {
+    return function(e) {
+      var hoverData = ctx.getImageData( e.pageX, e.pageY, 1, 1).data;
+      var hoverRGB = getRGBColor(hoverData);
 
-    if ( !areColorsEqual( hoverRGB, pixel.color, pixel.size) ) {
-      drawPixel(e.pageX, e.pageY, pixel.color, pixel.size);
-      pushToHistory(action.index, action.draw, e.pageX, e.pageY, hoverRGB, pixel.color, pixel.size, drawPathId);
-    }
+      if ( !areColorsEqual( hoverRGB, color, pixel.size) ) {
+        drawPixel(e.pageX, e.pageY, color, pixel.size);
+        pushToHistory(action.index, action.draw, e.pageX, e.pageY, hoverRGB, color, pixel.size, drawPathId);
+      }
+    };
   };
 
   var paint = function(x, y, paintColor, initColor) {
@@ -917,9 +919,10 @@
       undoRedoHistory = undoRedoHistory.slice(0, historyPointer+1);
       DOM.$redo.attr('disabled','disabled');
 
-      if ( mode.paint && !areColorsEqual( origRGB, pixel.color ) ) {
+      var color = e.button === 5 ? 'rgba(0, 0, 0, 0)' : pixel.color;
+      if ( mode.paint && !areColorsEqual( origRGB, color ) ) {
         action.index++;
-        paint( e.pageX, e.pageY, pixel.color, origRGB );
+        paint( e.pageX, e.pageY, color, origRGB );
       }
       else {
         drawPathId = Date.now();
@@ -928,16 +931,16 @@
         mode.drawing = true;
 
         action.index++;
-        drawPixel(e.pageX, e.pageY, pixel.color, pixel.size);
+        drawPixel(e.pageX, e.pageY, color, pixel.size);
 
-        if ( !areColorsEqual( origRGB, pixel.color) ) {
-          pushToHistory(action.index, action.draw, e.pageX, e.pageY, origRGB, pixel.color, pixel.size, drawPathId);
+        if ( !areColorsEqual( origRGB, color) ) {
+          pushToHistory(action.index, action.draw, e.pageX, e.pageY, origRGB, color, pixel.size, drawPathId);
         }
 
-        DOM.$canvas.on('pointermove', drawOnMove);
+        DOM.$canvas.on('pointermove', drawOnMove(color));
 
         // update color history palette - shows latest 20 colors used
-        if ( pixel.color !== 'rgba(0, 0, 0, 0)' ) {
+        if ( color !== 'rgba(0, 0, 0, 0)' ) {
           updateColorHistoryPalette();
         }
       }
